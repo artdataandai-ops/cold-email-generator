@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +15,14 @@ from src.config import OPENAI_API_KEY
 from src.db import AppSettings, SenderProfile, get_engine
 from src.pipeline import research_pipeline
 
-app = FastAPI(title="Cold-Email Research Assistant", version="0.1.0")
+# When deployed behind a reverse proxy on a sub-path (e.g. nginx serving the app
+# at https://host/coldemail/ and stripping the prefix before forwarding), set
+# ROOT_PATH=/coldemail. It only affects generated URLs (docs, redirects) and the
+# value handed to the UI so its fetch() calls target the right prefix — route
+# matching itself stays at the app root. Empty (default) = served at "/".
+ROOT_PATH = os.getenv("ROOT_PATH", "").rstrip("/")
+
+app = FastAPI(title="Cold-Email Research Assistant", version="0.1.0", root_path=ROOT_PATH)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
@@ -71,7 +79,7 @@ async def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"key_configured": bool(OPENAI_API_KEY)},
+        {"key_configured": bool(OPENAI_API_KEY), "root_path": ROOT_PATH},
     )
 
 
