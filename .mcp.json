@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "scrapegraph-ai": {
+      "type": "http",
+      "url": "https://gitmcp.io/ScrapeGraphAI/Scrapegraph-ai"
+    }
+  }
+}

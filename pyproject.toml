@@ -1,0 +1,7 @@
+# Dependencies live in requirements.txt — single source of truth.
+# This file exists only to hold the pytest configuration so `pytest`
+# picks up the tests/ folder automatically and runs in quiet mode.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

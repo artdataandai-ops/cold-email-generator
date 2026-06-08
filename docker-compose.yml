@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    image: cold-email-research:latest
+    container_name: cold-email-research
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./kb:/app/kb            # SQLite DB (sender profiles)
+      - ./logs:/app/logs        # per-request JSON logs
+      - ./.cache:/app/.cache    # ScrapeGraphAI fetch cache + LinkedIn cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health').read()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3

@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cold-Email Research Pipeline — Interactive Architecture</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card2: #273347;
+    --fg: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-fg: #0f172a;
+    --border: #334155;
+    --free: #22c55e;
+    --free-bg: #052e1a;
+    --llm: #eab308;
+    --llm-bg: #3a2f08;
+    --paid: #ef4444;
+    --paid-bg: #3a0e0e;
+    --gate: #6366f1;
+    --io: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.55;
+  }
+  header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #1e293b, #0f172a);
+  }
+  h1 { margin: 0; font-size: 1.4rem; }
+  .lead { color: var(--muted); margin: 0.4rem 0 0; max-width: 70ch; }
+
+  .container { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; padding: 1.5rem 2rem; }
+  @media (max-width: 1000px) { .container { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--accent); }
+
+  /* Toggle row above the diagram */
+  .toggles {
+    display: flex; gap: 0.75rem; flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    user-select: none;
+  }
+  .toggle input { accent-color: var(--accent); cursor: pointer; }
+  .toggle.off { color: var(--muted); }
+
+  /* Legend pills */
+  .legend { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.8rem; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.free { background: var(--free); }
+  .dot.llm  { background: var(--llm); }
+  .dot.paid { background: var(--paid); }
+  .dot.gate { background: var(--gate); }
+
+  /* Mermaid container */
+  #diagram {
+    background: var(--card2);
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  /* Visual states layered on Mermaid */
+  .node-disabled rect, .node-disabled polygon, .node-disabled circle, .node-disabled path {
+    opacity: 0.25 !important;
+  }
+  .node-active rect, .node-active polygon, .node-active circle, .node-active path {
+    stroke-width: 4px !important;
+    filter: drop-shadow(0 0 8px var(--accent));
+  }
+  .node-clickable { cursor: pointer; }
+
+  /* Detail side panel */
+  #detail h3 { margin-top: 0; font-size: 1.05rem; }
+  #detail .tag {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .tag.free { background: var(--free-bg); color: var(--free); border: 1px solid var(--free); }
+  .tag.llm  { background: var(--llm-bg); color: var(--llm); border: 1px solid var(--llm); }
+  .tag.paid { background: var(--paid-bg); color: var(--paid); border: 1px solid var(--paid); }
+  .tag.gate { background: #1e1e3a; color: var(--gate); border: 1px solid var(--gate); }
+  #detail .meta {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+  #detail .file {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.8rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  #detail p { margin: 0 0 0.75rem; }
+  #detail ul { margin: 0 0 0.75rem; padding-left: 1.2rem; }
+  #detail .hint { color: var(--muted); font-style: italic; }
+
+  /* Reference tables */
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.75rem; }
+  th, td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  td code { background: var(--bg); padding: 0.05rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 0 2rem 2rem; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; padding-bottom: 1rem; } }
+
+  details summary { cursor: pointer; font-weight: 600; padding: 0.4rem 0; }
+
+  footer { color: var(--muted); padding: 0 2rem 2rem; font-size: 0.85rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cold-Email Research Pipeline</h1>
+  <p class="lead">
+    You type a company URL and (optionally) a LinkedIn profile. The system finds recent news, looks at the prospect's
+    LinkedIn activity, ranks everything by "would this make a good icebreaker?", and writes a personalised cold email.
+    Click any box below to see what it does.
+  </p>
+</header>
+
+<div class="container">
+
+  <main class="panel">
+    <h2>Pipeline flowchart</h2>
+
+    <div class="legend">
+      <span class="pill"><span class="dot free"></span> Free (HTTP only)</span>
+      <span class="pill"><span class="dot llm"></span> Cheap LLM</span>
+      <span class="pill"><span class="dot paid"></span> Paid API</span>
+      <span class="pill"><span class="dot gate"></span> Decision gate</span>
+    </div>
+
+    <div class="toggles">
+      <label class="toggle" data-target="WS"><input type="checkbox" checked /> Web search ⚙️</label>
+      <label class="toggle" data-target="LI"><input type="checkbox" checked /> LinkedIn fetch ⚙️</label>
+      <label class="toggle" data-target="EG"><input type="checkbox" /> Skip email when no context ⚙️</label>
+      <span style="color: var(--muted); font-size: 0.8rem; align-self: center;">
+        ← Toggle these to see how the pipeline shape changes.
+      </span>
+    </div>
+
+    <div id="diagram">
+      <pre class="mermaid">
+flowchart TD
+    Start([User submits company URL + LinkedIn URL]):::io --> Discover
+
+    subgraph S1["① DISCOVER NEWS PAGES"]
+        Discover[discover_pages]:::gate
+        D1["Anchor scan<br/>scan homepage &lt;a&gt; tags"]:::free
+        D2["Sitemap.xml<br/>look for newsy paths"]:::free
+        D3["Common-path probe<br/>/news /blog /press<br/>+ HTTP validate"]:::free
+        D4["LLM fallback<br/>only if 1-3 failed"]:::llm
+        Discover --> D1 --> D2 --> D3 --> D4
+    end
+
+    Discover --> Extract
+
+    subgraph S2["② EXTRACT NEWS"]
+        Extract[extract_company_news]:::gate
+        E1["httpx fetch"]:::free
+        E2["Trafilatura<br/>strip nav/footer/ads"]:::free
+        E3["BeautifulSoup<br/>collect every &lt;a href&gt;"]:::free
+        E4["OpenAI extract<br/>URL must be from &lt;a&gt; set"]:::llm
+        E5["Drop hallucinated URLs<br/>example.com etc."]:::free
+        Extract --> E1 --> E2 --> E3 --> E4 --> E5
+    end
+
+    Extract --> RSS
+
+    subgraph S3["③ RSS FEEDS"]
+        RSS[fetch_rss_items]:::gate
+        R1["Find feeds<br/>&lt;link rel=alternate&gt;<br/>+ probe /feed /rss"]:::free
+        R2["Parse XML<br/>RSS 2.0 + Atom"]:::free
+        RSS --> R1 --> R2
+    end
+
+    RSS --> WS
+
+    subgraph S4["④ WEB SEARCH ⚙️"]
+        WS[web_search_company]:::gate
+        W1["DuckDuckGo query"]:::free
+        W2["Filter blocklist"]:::free
+        W3["Per-URL scrape + LLM"]:::llm
+        W4["Drop off-topic items<br/>brand must appear<br/>in title/summary"]:::free
+        WS --> W1 --> W2 --> W3 --> W4
+    end
+
+    WS --> Rank
+
+    subgraph S5["⑤ RANK FOR SALES"]
+        Rank[filter_dedupe_rank]:::gate
+        F1["Drop old items"]:::free
+        F2["Dedupe by URL"]:::free
+        F3["Score each item<br/>category + recency<br/>+ signal words<br/>+ sender-KB match<br/>+ recipient role"]:::free
+        F4["Cap at top N"]:::free
+        Rank --> F1 --> F2 --> F3 --> F4
+    end
+
+    Rank --> LI
+
+    subgraph S6["⑥ LINKEDIN ⚙️"]
+        LI[fetch_linkedin]:::gate
+        L1["Apify API<br/>fetch recent posts"]:::paid
+        L2["Date-filter posts"]:::free
+        L3["Rank for relevance<br/>(LLM scores each post)"]:::llm
+        LI --> L1 --> L2 --> L3
+    end
+
+    LI --> EG
+    EG{has context?}:::decision
+    EG -->|yes| Email
+    EG -->|no, Skip-empty ON ⚙️| SkipEmail([Skip: empty draft]):::io
+    EG -->|no, Skip-empty OFF| Email
+
+    subgraph S7["⑦ WRITE EMAIL"]
+        Email[draft_email]:::gate
+        EM1["OpenAI<br/>SDR system prompt<br/>+ top news + posts<br/>+ sender KB + intent<br/>80-120 words"]:::llm
+        Email --> EM1
+    end
+
+    Email --> Final([Email + bundle + cost report]):::io
+    SkipEmail --> Final
+
+    classDef free fill:#dcfce7,stroke:#22c55e,color:#0f172a
+    classDef llm fill:#fef9c3,stroke:#eab308,color:#0f172a
+    classDef paid fill:#fecaca,stroke:#ef4444,color:#0f172a
+    classDef gate fill:#e0e7ff,stroke:#6366f1,color:#0f172a
+    classDef decision fill:#e0e7ff,stroke:#6366f1,color:#0f172a
+    classDef io fill:#cbd5e1,stroke:#475569,color:#0f172a
+
+    click Discover call info("Discover")
+    click D1 call info("D1")
+    click D2 call info("D2")
+    click D3 call info("D3")
+    click D4 call info("D4")
+    click Extract call info("Extract")
+    click E1 call info("E1")
+    click E2 call info("E2")
+    click E3 call info("E3")
+    click E4 call info("E4")
+    click E5 call info("E5")
+    click RSS call info("RSS")
+    click R1 call info("R1")
+    click R2 call info("R2")
+    click WS call info("WS")
+    click W1 call info("W1")
+    click W2 call info("W2")
+    click W3 call info("W3")
+    click W4 call info("W4")
+    click Rank call info("Rank")
+    click F1 call info("F1")
+    click F2 call info("F2")
+    click F3 call info("F3")
+    click F4 call info("F4")
+    click LI call info("LI")
+    click L1 call info("L1")
+    click L2 call info("L2")
+    click L3 call info("L3")
+    click EG call info("EG")
+    click Email call info("Email")
+    click EM1 call info("EM1")
+      </pre>
+    </div>
+  </main>
+
+  <aside class="panel" id="detail">
+    <h3>Click any box for details</h3>
+    <p class="hint">
+      Each box is a real function in the codebase. Click it to see what it does, why it's there, and where to find it.
+    </p>
+    <p class="hint">
+      Pipeline stages are numbered ①–⑦ in execution order. The orange ⚙️ stages can be toggled on/off in Advanced settings —
+      try the toggles above.
+    </p>
+  </aside>
+
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>Settings you can change</h2>
+    <table>
+      <thead><tr><th>Setting</th><th>What it does</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Recency window</strong></td><td>Drop news older than this. Chips: 30 / 60 / 90 / 180 days.</td><td>90 days</td></tr>
+        <tr><td><strong>Max news items</strong></td><td>Hard cap on how many news items reach the email writer.</td><td>8</td></tr>
+        <tr><td><strong>Max discovered URLs</strong></td><td>How many pages stage ① is allowed to return.</td><td>8</td></tr>
+        <tr><td><strong>Search results</strong></td><td>How many DuckDuckGo hits stage ④ scrapes.</td><td>5</td></tr>
+        <tr><td><strong>Enable web search</strong></td><td>Toggle stage ④ on/off.</td><td>off</td></tr>
+        <tr><td><strong>Enable LinkedIn</strong></td><td>Toggle stage ⑥ on/off.</td><td>on</td></tr>
+        <tr><td><strong>Skip empty email</strong></td><td>If both news and LinkedIn empty, don't draft an email.</td><td>off</td></tr>
+        <tr><td><strong>Cost cap</strong></td><td>Pipeline aborts if estimated $ exceeds this.</td><td>$0.20</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>What gets logged</h2>
+    <p>Every run writes a JSON log to <code>logs/&lt;timestamp&gt;_&lt;id&gt;.json</code> with:</p>
+    <ul>
+      <li>Inputs (everything you typed)</li>
+      <li>Each step's name, duration, status, input, output, cost delta</li>
+      <li>Cumulative cost</li>
+      <li>Final email + bundle</li>
+      <li>Any warnings (skipped steps, failed fetches)</li>
+    </ul>
+    <p class="hint">Open one to debug "why didn't this find news?" or "why did it pick that item?".</p>
+
+    <h2 style="margin-top: 1.25rem;">What the system does NOT do</h2>
+    <ul>
+      <li>Doesn't send the email — you copy/paste it.</li>
+      <li>Doesn't store the prospect. Stateless per run; only the log is kept.</li>
+      <li>Doesn't invent facts. If research is empty, the email opens with a generic intro — never fabricated quotes.</li>
+      <li>Doesn't always beat bot-protected sites. That's why RSS + web search exist as parallel signals.</li>
+    </ul>
+  </section>
+</div>
+
+<footer>
+  Companion to <a href="00-architecture.md">00-architecture.md</a>. Open this file in any browser — it's fully self-contained except for the Mermaid CDN.
+</footer>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    securityLevel: "loose",
+    themeVariables: {
+      fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif',
+      fontSize: "13px",
+      primaryColor: "#1e293b",
+      primaryTextColor: "#e2e8f0",
+      lineColor: "#64748b",
+      mainBkg: "#1e293b",
+    },
+  });
+</script>
+
+<script>
+  // Node descriptions. Each entry: tag (free/llm/paid/gate), title, what it does, files.
+  const INFO = {
+    Discover: {
+      tag: "gate", title: "Stage ①: Discover news pages",
+      desc: "Finds where this company publishes news. Tries four strategies in order, cheapest first. Stops as soon as one returns enough URLs.",
+      bullets: [
+        "Why this matters: most sites bury their news under /blog, /press, /resources, or non-standard paths like /whats-new.",
+        "Fallback chain prevents wasting LLM tokens on sites where simple HTTP probing works.",
+      ],
+      file: "src/company.py → discover_pages()",
+    },
+    D1: {
+      tag: "free", title: "Anchor scan",
+      desc: "Fetches the homepage with a real browser User-Agent, parses every <a> tag with BeautifulSoup, and keeps same-brand links whose href OR link text contains news keywords (news, blog, press, insights, whats-new, …).",
+      bullets: [
+        "Cheapest & most accurate when it works — finds even non-standard paths.",
+        "Penalises article-slug URLs and deep paths; rewards keyword-in-path matches.",
+      ],
+      file: "src/company.py → _homepage_anchor_scan()",
+    },
+    D2: {
+      tag: "free", title: "Sitemap.xml",
+      desc: "If anchor scan came up short, fetches /sitemap.xml or /sitemap_index.xml and filters <loc> entries by news-like path keywords.",
+      bullets: [
+        "Many sites publish complete sitemaps — this catches archives the homepage doesn't link to.",
+        "Sites behind Cloudflare often 403 plain HTTP here; we fall through.",
+      ],
+      file: "src/company.py → _try_sitemap()",
+    },
+    D3: {
+      tag: "free", title: "Common-path probe",
+      desc: "Builds candidate URLs by appending /news, /blog, /press, /resources, … to the company base. HTTP-validates each one in parallel. Drops 404s and pages that don't look like real listings.",
+      bullets: [
+        "Each candidate is fetched and scored by HTML structure (article tags, headings, dates, link density). Score ≥ 3 to keep.",
+        "Network errors keep the URL — bot-walled sites still get a Playwright try later.",
+      ],
+      file: "src/company.py → _probe_common_paths(), _validate_listing_candidates()",
+    },
+    D4: {
+      tag: "llm", title: "LLM fallback",
+      desc: "Last resort. Only runs if all three previous strategies failed. Uses scrapegraphai's SmartScraperGraph to ask an LLM to extract URLs from the homepage HTML (Playwright-rendered, so JS-heavy SPAs work).",
+      bullets: [
+        "Slow (~25s) and costs LLM tokens.",
+        "Useful for SPA-heavy sites where the JS-rendered nav menu is invisible to httpx.",
+      ],
+      file: "src/company.py → discover_pages() (tier 4)",
+    },
+    Extract: {
+      tag: "gate", title: "Stage ②: Extract news from each page",
+      desc: "Visits each discovered URL and pulls structured news items out of the page. Replaces an older scrapegraphai-based step that was prone to hallucination.",
+      bullets: [
+        "Per-URL: httpx fetch → Trafilatura clean → BeautifulSoup links → OpenAI extract → URL validation.",
+        "URLs returned by the LLM must match one of the page's actual <a href> values — blocks the example.com hallucination class.",
+      ],
+      file: "src/extractor.py → extract_news_from_pages()",
+    },
+    E1: {
+      tag: "free", title: "httpx fetch",
+      desc: "Plain HTTP GET with a browser User-Agent. Fast (0.3-1s). Falls back to Playwright only when httpx fails or returns under 1KB (likely a Cloudflare challenge page).",
+      file: "src/extractor.py → _fetch_with_httpx()",
+    },
+    E2: {
+      tag: "free", title: "Trafilatura cleaner",
+      desc: "Purpose-built article extractor. Strips nav, footer, ads, cookie banners. The LLM sees only the article body — about 3× shorter than the raw HTML.",
+      bullets: [
+        "Less noise = less hallucination, fewer tokens, lower cost.",
+      ],
+      file: "src/extractor.py → _clean_text()",
+    },
+    E3: {
+      tag: "free", title: "BeautifulSoup link collector",
+      desc: "Collects every <a href> on the page (deduped, javascript:/mailto:/fragments stripped). This is the 'allowed URLs' set the LLM is forced to pick from.",
+      bullets: [
+        "The single biggest fix for fabricated URLs — without it the LLM invents links when it can't match a headline.",
+      ],
+      file: "src/extractor.py → _extract_links()",
+    },
+    E4: {
+      tag: "llm", title: "OpenAI direct extract",
+      desc: "Calls OpenAI's structured-outputs endpoint with a Pydantic schema. The prompt: extract news items with title/url/date — and the URL MUST be one of the supplied <a href> values.",
+      bullets: [
+        "temperature=0; response_format constrains the JSON.",
+        "Uses gpt-4o-mini by default (~$0.001 per page).",
+      ],
+      file: "src/extractor.py → _call_llm()",
+    },
+    E5: {
+      tag: "free", title: "Hallucinated URL drop",
+      desc: "Even with constraints, the LLM occasionally invents a URL. This step checks each result's URL against the page's anchor set (normalised for www/trailing-slash). Mismatches dropped.",
+      bullets: [
+        "Plus a schema-level validator rejects example.com / example.org / localhost as a defence-in-depth check.",
+      ],
+      file: "src/extractor.py → _is_known_link(), src/schemas.py → NewsItem validator",
+    },
+    RSS: {
+      tag: "gate", title: "Stage ③: RSS / Atom feeds",
+      desc: "Zero-LLM, zero-hallucination news source. Items come pre-structured from XML — title, URL, date, summary all directly from the feed.",
+      bullets: [
+        "Often works even when the website is bot-protected (feeds are meant for bots).",
+        "Runs unconditionally as a safety net even when stage ② succeeded.",
+      ],
+      file: "src/rss.py → fetch_rss_items()",
+    },
+    R1: {
+      tag: "free", title: "Discover feeds",
+      desc: "Two strategies: scrape the homepage for <link rel='alternate' type='application/rss+xml'> tags, and probe 16 common feed paths (/feed, /rss, /atom.xml, /blog/feed, …) in parallel.",
+      file: "src/rss.py → discover_rss_feeds()",
+    },
+    R2: {
+      tag: "free", title: "Parse XML",
+      desc: "Handles both RSS 2.0 and Atom formats with the stdlib XML parser. Strips HTML from descriptions; dedupes by title.",
+      file: "src/rss.py → parse_rss_feed()",
+    },
+    WS: {
+      tag: "gate", title: "Stage ④: Web search (optional)",
+      desc: "When on-site extraction comes up empty (or the company is small and obscure), this scrapes recent third-party coverage. Off by default.",
+      bullets: [
+        "Replaces scrapegraphai's SearchGraph (which fails-fast on first bad URL). Our version runs each URL in its own try/except.",
+      ],
+      file: "src/search.py → web_search_company()",
+    },
+    W1: {
+      tag: "free", title: "DuckDuckGo query",
+      desc: "Builds a query like: \"acme\" (news OR funding OR award OR launch OR partnership) after:2026-02-11 — and runs it via the ddgs library.",
+      file: "src/search.py → _ddg_search()",
+    },
+    W2: {
+      tag: "free", title: "Blocklist filter",
+      desc: "Drops known low-signal hosts: businesswire.com, prnewswire.com, einpresswire.com, crunchbase.com, zoominfo.com, owler.com, …",
+      bullets: [
+        "Aggregator press releases pollute results; full-page sales-prospect databases scrape-block.",
+      ],
+      file: "src/search.py (_BLOCKED_DOMAINS)",
+    },
+    W3: {
+      tag: "llm", title: "Per-URL scrape + LLM",
+      desc: "Each surviving DuckDuckGo URL is scraped via scrapegraphai and an LLM extracts NewsItems. One URL failing doesn't kill the rest.",
+      bullets: [
+        "Cost-metered per URL with the cost cap; aborts cleanly if the cap is hit.",
+      ],
+      file: "src/search.py (main loop)",
+    },
+    W4: {
+      tag: "free", title: "Brand relevance filter",
+      desc: "Even with prompt instructions, the LLM sometimes extracts articles that aren't about our prospect. Post-filter requires the company brand to appear in the item's title or summary.",
+      bullets: [
+        "Multi-word domains like 'dialectcommunications' generate both the full slug and 'dialect' as match needles (suffix-strip on 'communications', 'group', 'holdings', …).",
+      ],
+      file: "src/search.py → _brand_candidates(), _is_relevant_to_company()",
+    },
+    Rank: {
+      tag: "gate", title: "Stage ⑤: Rank for sales relevance",
+      desc: "Combines all news sources (on-site + RSS + web search) and orders them by 'would a real SDR open with this?'.",
+      file: "src/relevance.py → rank_news() (called from src/pipeline.py)",
+    },
+    F1: {
+      tag: "free", title: "Recency filter",
+      desc: "Drops anything older than the recency window (default 90 days). Configurable in the UI with quick chips.",
+      file: "src/recency.py → filter_recent_news()",
+    },
+    F2: {
+      tag: "free", title: "Dedupe by URL",
+      desc: "Same article often appears in both RSS and on-site extraction. URL match (with trailing-slash and case normalised) collapses them.",
+      file: "src/recency.py → dedupe_news()",
+    },
+    F3: {
+      tag: "free", title: "Score for sales relevance",
+      desc: "Each item gets a single score combining FIVE signals — modelled on how a real SDR picks an icebreaker:",
+      bullets: [
+        "Category: funding (5) > award/launch (4) > press (3) > news (2) > blog (1) > other (0).",
+        "Recency: linear decay from 1.0 at today to 0.0 at 90 days.",
+        "Buying-signal language: regex matches for 'raises $X', 'Series B', 'acquires', 'appoints new CTO', 'expands into', etc.",
+        "Sender-offering overlap: keyword intersection between the item and the seller's KB profile.",
+        "Recipient role mention: small boost if 'CTO' / 'Chief Technology Officer' appears in the item.",
+      ],
+      file: "src/relevance.py → score_relevance()",
+    },
+    F4: {
+      tag: "free", title: "Cap at top N",
+      desc: "Hard cap (default 8) on items kept for the email writer. The writer further slices to top 5 in its prompt — first 1-2 are the hook.",
+      file: "src/pipeline.py (filter_dedupe_rank step)",
+    },
+    LI: {
+      tag: "gate", title: "Stage ⑥: LinkedIn fetch (optional)",
+      desc: "Pulls the recipient's recent LinkedIn activity so the email can reference what they've personally been talking about.",
+      bullets: [
+        "Off by checkbox (per request) or env var. On by default if a LinkedIn URL was provided.",
+      ],
+      file: "src/linkedin.py → fetch_linkedin()",
+    },
+    L1: {
+      tag: "paid", title: "Apify API",
+      desc: "Hosted LinkedIn scraping actor. We don't run a browser ourselves — Apify handles authentication and bot-evasion, then returns JSON.",
+      bullets: [
+        "Costs Apify compute units per fetch (small).",
+        "Cached for 24 hours per profile to avoid re-billing on repeat lookups.",
+      ],
+      file: "src/linkedin.py → fetch_linkedin()",
+    },
+    L2: {
+      tag: "free", title: "Date-filter posts",
+      desc: "Drops posts older than the recency window. Same logic as news filtering.",
+      file: "src/recency.py → filter_recent_posts()",
+    },
+    L3: {
+      tag: "llm", title: "Rank LinkedIn posts",
+      desc: "An LLM scores each post 0-1 on relevance to the recipient's role and the news already gathered. Pure reposts (no own commentary) get filtered out.",
+      bullets: [
+        "Topics + relevance_score are surfaced to the email writer.",
+      ],
+      file: "src/linkedin_filter.py → filter_linkedin_posts()",
+    },
+    EG: {
+      tag: "gate", title: "Decision: has context?",
+      desc: "Checks whether we have any news items OR any LinkedIn posts. If yes → write the email. If no, behaviour depends on the 'Skip empty email' setting.",
+      bullets: [
+        "Skip empty ON: skip the LLM call, return an empty email with a warning.",
+        "Skip empty OFF (default): write the email anyway with a generic prospect-anchored intro.",
+      ],
+      file: "src/pipeline.py (email gate)",
+    },
+    Email: {
+      tag: "gate", title: "Stage ⑦: Write the email",
+      desc: "Final LLM call. A senior-SDR system prompt instructs the model to hook from the strongest research signal, bridge to the sender's offering, and end with the intent's CTA.",
+      file: "src/email_writer.py → draft_email()",
+    },
+    EM1: {
+      tag: "llm", title: "OpenAI email draft",
+      desc: "Inputs to the model: top 5 news items, top 3 LinkedIn posts, full sender KB, recipient name + role, the intent. Output: 80-120 word email with subject line + one CTA.",
+      bullets: [
+        "Hook priority: news+LinkedIn topical match > news only > LinkedIn only > sender-anchored fallback (never invent quotes).",
+        "Temperature 0.4 — slight variation between runs but stays anchored to inputs.",
+        "Banned words: 'cutting-edge', 'world-class', 'revolutionary'.",
+      ],
+      file: "src/email_writer.py → draft_email()",
+    },
+  };
+
+  // Expose for Mermaid's click handler
+  let activeId = null;
+  window.info = function(id) {
+    const data = INFO[id];
+    const panel = document.getElementById("detail");
+    if (!data) { panel.innerHTML = "<p>No info for: " + id + "</p>"; return; }
+
+    panel.innerHTML = `
+      <span class="tag ${data.tag}">${data.tag}</span>
+      <h3>${data.title}</h3>
+      <p>${data.desc}</p>
+      ${data.bullets ? "<ul>" + data.bullets.map(b => `<li>${b}</li>`).join("") + "</ul>" : ""}
+      ${data.file ? `<div class="meta">📄 <span class="file">${data.file}</span></div>` : ""}
+    `;
+
+    // Highlight the active node
+    document.querySelectorAll(".node-active").forEach(el => el.classList.remove("node-active"));
+    const el = document.querySelector(`g[id*="-${id}-"]`);
+    if (el) el.classList.add("node-active");
+    activeId = id;
+  };
+
+  // Toggle handlers — visually grey out optional subgraphs
+  function applyToggles() {
+    document.querySelectorAll(".toggle").forEach(t => {
+      const target = t.dataset.target;
+      const checked = t.querySelector("input").checked;
+      t.classList.toggle("off", !checked);
+
+      // Mermaid wraps subgraphs in a <g> with id="flowchart-<NodeId>-N" for the gate node.
+      // Apply opacity to the gate node and all its descendants in that subgraph.
+      // Subgraph IDs in our diagram: S1..S7 (Mermaid uses different ids internally),
+      // so we walk all nodes whose id contains "-<target>-" plus their connected descendants.
+      const matches = document.querySelectorAll(`g[id*="-${target}-"]`);
+      matches.forEach(g => g.classList.toggle("node-disabled", !checked));
+    });
+  }
+  document.querySelectorAll(".toggle input").forEach(input => {
+    input.addEventListener("change", applyToggles);
+  });
+
+  // After Mermaid renders, wire things up.
+  const observer = new MutationObserver(() => {
+    const svg = document.querySelector("#diagram svg");
+    if (!svg) return;
+    // Make every clickable Mermaid node show a pointer
+    svg.querySelectorAll("g.node").forEach(g => g.classList.add("node-clickable"));
+    applyToggles();
+    observer.disconnect();
+  });
+  observer.observe(document.getElementById("diagram"), { childList: true, subtree: true });
+</script>
+
+</body>
+</html>

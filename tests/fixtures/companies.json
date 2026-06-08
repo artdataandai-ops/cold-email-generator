@@ -1,0 +1,46 @@
+{
+  "_comment_format": "Each company has: url (required), scenario (label for the table), notes (free text), expected_items (list of {url} the SDR manually curated as ground truth). Leave expected_items as [] for now — fill it in by visiting the site, copying real article URLs, and pasting them as {\"url\": \"...\"} entries. Companies with [] get status SKIP in the report. URLs are matched after normalisation (lowercase, strip https/www/trailing slash/fragment/query), so paste them however the browser shows them.",
+  "_comment_workflow": "1) Open the company URL in a browser. 2) Find a few recent news/blog/press articles you'd expect the pipeline to surface. 3) Copy each article's URL into expected_items. 4) Run: python scripts/scrape_batch.py 5) Read the report: missed = articles you curated but the system didn't find (the regression signal).",
+  "companies": [
+    {
+      "url": "https://stripe.com/in",
+      "scenario": "rss-feed",
+      "notes": "Has a real Atom feed. Exercises the RSS-discovery path; should return items even if on-site extraction fails.",
+      "expected_items": ["https://stripe.com/blog/vertical-saas-insights-sessions-2026",
+      "https://stripe.com/blog/everything-we-announced-at-sessions-2026",
+      "https://stripe.com/newsroom/news/sessions-2026"]
+    },
+    {
+      "url": "https://www.paymentology.com/",
+      "scenario": "spa-react",
+      "notes": "JS-rendered SPA. Exercises the Trafilatura -> Playwright escalation in src/extractor.py:_looks_like_unrendered_spa.",
+      "expected_items": ["https://www.paymentology.com/blog/unstoppable-starts-here",
+                         "https://www.paymentology.com/blog/fraud-in-a-mobile-money-powerhouse-kenyas-next-phase-of-digital-security",
+                         "https://www.paymentology.com/newsroom/paymentology-raises-175-million-co-led-by-apis-partners-and-aspirity-partners-to-support-next-phase-of-growth",
+                         "https://www.paymentology.com/newsroom/orange-money-and-paymentology-introduce-visa-3d-secure-in-botswana-to-strengthen-online-payment-security",
+                         "https://www.afp.com/en/infos/paymentology-raises-175-million-co-led-apis-partners-and-aspirity-partners-support-next-phase"]
+    },
+    {
+      "url": "https://www.thredd.ai/",
+      "scenario": "cloudflare-walled",
+      "notes": "Aggressive bot protection. On-site extraction usually returns 0; web search is the rescue path.",
+      "expected_items": ["https://www.thredd.ai/company/press-releases/visa-flexible-credential-brings-more-flexible-ways-to-pay-to-zilch-cardholders-in-the-uk",
+      "https://www.thredd.ai/company/press-releases/thredd-and-currensea-expand-strategic-partnership-to-power-next-phase-of-growth",
+      "https://www.thredd.ai/company/press-releases/thredd-powers-clique-s-launch-of-an-invite-only-wealth-ecosystem-with-visa-card-program"]
+    },
+    {
+      "url": "https://www.fiserv.com/",
+      "scenario": "anti-hallucination",
+      "notes": "Earlier produced example.com URLs from the LLM. The schema validator + link-constraint check should keep them out.",
+      "expected_items": ["https://www.fiserv.com/en/insights/articles-and-blogs/healthcare-practices-cant-afford-cash-flow-leaks.html",
+      "https://www.manilatimes.net/2026/05/12/tmt-newswire/globenewswire/fiserv-expands-clovers-restaurant-portfolio-with-new-fine-dining-solution-clover-reserve-powered-by-tabit/2341750"]
+    },
+    {
+      "url": "https://hedgeequities.com/",
+      "scenario": "compound-brand",
+      "notes": "Multi-word brand. Exercises whitespace-tolerant relevance match in src/search.py:_is_relevant_to_company.",
+      "expected_items": ["https://hedgeequities.com/blogs/post/mutual-fund-advisory-services-your-complete-investment-guide",
+      "https://hedgeequities.com/blogs/post/share-market-portfolio-management-a-complete-guide"]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+# --- Secrets ---
+.env
+.env.local
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# --- Runtime state (mounted as Docker volumes; never commit) ---
+.cache/
+logs/
+kb/
+
+# --- Generated artifacts (decks, screenshots, batch eval output) ---
+output/
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+nul
+
+# --- Misc temp / backup files ---
+*.bak
+*.tmp
+*.log
+
+# --- SQLite write-ahead-log scratch (defensive — kb/ already ignored) ---
+*.db-shm
+*.db-wal
+
+# --- Claude Code workspace (uncomment if you don't want to share agent config) ---
+# .claude/

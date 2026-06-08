@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cold-Email Research Assistant</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --fg: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-fg: #0f172a;
+    --warn: #fbbf24;
+    --error: #f87171;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+  .subtitle { color: var(--muted); margin: 0 0 2rem; font-size: 0.9rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 700px) { form .row { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; }
+  input[type="text"], input[type="url"], input[type="number"] {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  .cap-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  .cap-row input { flex: 1; }
+  .cap-row .value { color: var(--accent); font-weight: 600; min-width: 70px; text-align: right; }
+  button {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: 0;
+    padding: 0.7rem 1.4rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .results { display: grid; grid-template-columns: 3fr 2fr; gap: 1.5rem; }
+  @media (max-width: 900px) { .results { grid-template-columns: 1fr; } }
+  .insight {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .insight summary { cursor: pointer; font-weight: 500; }
+  .insight summary::marker { color: var(--muted); }
+  .badge {
+    display: inline-block;
+    background: var(--bg);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+  }
+  .date { color: var(--muted); font-size: 0.85rem; }
+  textarea {
+    width: 100%;
+    min-height: 320px;
+    padding: 0.75rem;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .warn { color: var(--warn); margin-bottom: 0.5rem; font-size: 0.9rem; }
+  .error { color: var(--error); }
+  .status-row {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+  }
+  .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
+  .dot.ok    { background: #22c55e; }
+  .dot.empty { background: var(--warn); }
+  .dot.skipped { background: var(--muted); }
+  .dot.error { background: var(--error); }
+  .status-detail { color: var(--muted); margin-left: 0.3rem; }
+  .footer { color: var(--muted); font-size: 0.85rem; margin-top: 1rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 2px solid var(--accent-fg);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  .copy-btn, .ghost-btn {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+  .preset-row {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .preset-chip {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 0;
+  }
+  .preset-chip:hover { color: var(--fg); border-color: var(--accent); }
+  .preset-chip.active {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+  select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+  .sender-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: end; margin-bottom: 1rem; }
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-width: 720px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h2 { margin-top: 0; }
+  .modal .close-x { float: right; cursor: pointer; color: var(--muted); font-size: 1.4rem; line-height: 1; }
+  .profile-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    margin-bottom: 0.5rem;
+  }
+  .profile-row .meta { color: var(--muted); font-size: 0.85rem; }
+  .profile-row .actions button { margin-left: 0.4rem; }
+  textarea.kb-edit { min-height: 220px; }
+  details.advanced {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1rem;
+  }
+  details.advanced summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 500;
+    margin: 0 0 0.5rem;
+  }
+  details.advanced[open] summary { margin-bottom: 1rem; }
+  details.advanced input[type="number"] { padding: 0.5rem 0.75rem; }
+  details.advanced code {
+    background: var(--bg);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.85em;
+  }
+</style>
+<script
+  src="http://localhost:8000/widget.js"
+  data-chatbot-key="cbk_live_IoNHLn32-UZiuqBmyw_r5IrH0Dj7ATZF"
+  data-api-base="http://localhost:8000"
+  defer
+></script>
+</head>
+<body>
+<div class="container">
+  <h1>Cold-Email Research Assistant</h1>
+  <p class="subtitle">Recent news + LinkedIn → personalized cold email. <span id="recency-summary" class="status-detail"></span></p>
+
+  {% if not key_configured %}
+  <div class="card" style="border-color: var(--error);">
+    <p class="error"><strong>OPENAI_API_KEY is not set.</strong> Copy <code>.env.example</code> to <code>.env</code> and fill it in, then restart the server.</p>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <form id="research-form">
+      <div class="sender-row">
+        <div>
+          <label for="sender_profile_id">Pitching from (sender profile)</label>
+          <select id="sender_profile_id" name="sender_profile_id">
+            <option value="">(none — generic email)</option>
+          </select>
+        </div>
+        <button type="button" class="ghost-btn" id="manage-profiles-btn" style="margin: 0;">Manage profiles</button>
+      </div>
+      <div class="row">
+        <div>
+          <label for="company_url">Company URL *</label>
+          <input type="url" id="company_url" name="company_url" required placeholder="https://example.com/" />
+        </div>
+        <div>
+          <label for="company_name">
+            Company name (optional)
+            <span class="status-detail"></span>
+          </label>
+          <input type="text" id="company_name" name="company_name" placeholder="Company Name" maxlength="200" />
+        </div>
+      </div>
+      <div class="row" style="grid-template-columns: 1fr;">
+        <div>
+          <label for="linkedin_url">LinkedIn URL (optional)</label>
+          <input type="url" id="linkedin_url" name="linkedin_url" placeholder="https://www.linkedin.com/in/..." />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="recipient_name">Recipient name</label>
+          <input type="text" id="recipient_name" name="recipient_name" placeholder="Jane Doe" />
+        </div>
+        <div>
+          <label for="recipient_role">Recipient role</label>
+          <input type="text" id="recipient_role" name="recipient_role" placeholder="VP of Marketing" />
+        </div>
+      </div>
+      <div class="row" style="grid-template-columns: 1fr; margin-bottom: 0.75rem;">
+        <div>
+          <label for="intent_preset">Intent for this email</label>
+          <select id="intent_preset"></select>
+        </div>
+        <div style="margin-top: 0.5rem;">
+          <textarea id="intent" maxlength="500" rows="2" readonly style="font-family: inherit; min-height: auto;"></textarea>
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>Advanced settings <span class="status-detail">(saved server-side, shared across all teammates)</span></summary>
+        <div class="row">
+          <div>
+            <label for="recency_days">Recency window (days)</label>
+            <input type="number" id="recency_days" min="1" max="365" />
+            <div class="preset-row" id="recency_presets">
+              <button type="button" class="preset-chip" data-days="30">30d</button>
+              <button type="button" class="preset-chip" data-days="60">60d</button>
+              <button type="button" class="preset-chip" data-days="90">90d</button>
+              <button type="button" class="preset-chip" data-days="180">180d</button>
+            </div>
+          </div>
+          <div>
+            <label for="max_news_items">Max news items shown</label>
+            <input type="number" id="max_news_items" min="1" max="30" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="max_discovered_urls">Max company-site URLs to crawl</label>
+            <input type="number" id="max_discovered_urls" min="1" max="20" />
+          </div>
+          <div>
+            <label for="search_max_results">External web-search results</label>
+            <input type="number" id="search_max_results" min="0" max="15" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="linkedin_post_limit">LinkedIn posts to fetch</label>
+            <input type="number" id="linkedin_post_limit" min="1" max="50" />
+          </div>
+          <div style="display: flex; align-items: end; padding-bottom: 0.6rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer;">
+              <input type="checkbox" id="enable_web_search" />
+              <span>Enable external web search (DDG; off by default — slower, sometimes noisy)</span>
+            </label>
+          </div>
+        </div>
+        <div class="row" style="grid-template-columns: 1fr;">
+          <div style="display: flex; align-items: center; padding-bottom: 0.3rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer;">
+              <input type="checkbox" id="enable_linkedin" />
+              <span>Enable LinkedIn fetch (via Apify; uncheck to force-skip even when a URL is pasted)</span>
+            </label>
+          </div>
+        </div>
+        <div class="row" style="grid-template-columns: 1fr;">
+          <div style="display: flex; align-items: center; padding-bottom: 0.3rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer;">
+              <input type="checkbox" id="require_context_for_email" />
+              <span>Skip email when no news or LinkedIn context was found (saves LLM cost on empty runs)</span>
+            </label>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+          <button type="button" id="save-settings-btn" style="margin: 0;">Save as defaults</button>
+          <button type="button" class="ghost-btn" id="reset-settings-btn" style="margin: 0;">Reset to .env defaults</button>
+          <span class="footer" id="settings-status" style="margin: 0; font-size: 0.85rem;"></span>
+        </div>
+        <p class="footer" style="margin-top: 0.5rem;">"Save as defaults" persists for every teammate. Per-request changes (without saving) only apply to this run. Secrets and bootstrap values still come from <code>.env</code>.</p>
+      </details>
+
+      <button type="submit" id="submit-btn">Generate</button>
+    </form>
+  </div>
+
+  <div id="loading" class="card hidden">
+    <span class="spinner"></span> Researching… (typically 30-90 seconds)
+  </div>
+
+  <div id="results" class="hidden">
+    <div id="status-row" class="status-row"></div>
+    <div id="warnings"></div>
+    <div class="results">
+      <div class="card">
+        <h2 id="insights-heading">Recent insights</h2>
+        <div id="insights"></div>
+        <h2 id="posts-heading">LinkedIn posts</h2>
+        <div id="posts"></div>
+      </div>
+      <div class="card">
+        <h2>Draft email</h2>
+        <textarea id="email-out" placeholder="(no email drafted)"></textarea>
+        <button class="copy-btn" id="copy-btn" type="button">Copy to clipboard</button>
+      </div>
+    </div>
+    <p class="footer">Estimated cost this request: <span id="cost-out">$0.00</span></p>
+  </div>
+</div>
+
+<div id="profiles-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <span class="close-x" id="close-modal">×</span>
+    <h2>Sender profiles</h2>
+    <p class="subtitle">These describe what you're pitching FROM. Pick one in the main form to anchor the email's value bridge in your specific offering.</p>
+    <div id="profiles-list"></div>
+    <hr style="border-color: var(--border); margin: 1rem 0;" />
+    <h3 id="form-title">Add a profile</h3>
+    <input type="hidden" id="edit-id" value="" />
+    <div class="row">
+      <div>
+        <label for="p-name">Name *</label>
+        <input type="text" id="p-name" placeholder="Acme AI Platform" />
+      </div>
+      <div>
+        <label for="p-description">One-line description</label>
+        <input type="text" id="p-description" placeholder="AI-driven workflow automation for enterprise" />
+      </div>
+    </div>
+    <label for="p-kb">Knowledge base (free text — ICP, value props, tone notes, etc.)</label>
+    <textarea id="p-kb" class="kb-edit" placeholder="## What we offer&#10;...&#10;&#10;## Who we serve&#10;...&#10;&#10;## Differentiators&#10;...&#10;&#10;## Tone notes&#10;..."></textarea>
+    <div style="margin-top: 0.75rem;">
+      <button type="button" id="save-profile-btn">Save profile</button>
+      <button type="button" class="ghost-btn" id="cancel-edit-btn" style="margin: 0 0 0 0.4rem;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ---------- intent presets ----------
+const INTENT_PRESETS = [
+  { label: 'Introduce our offering',           text: 'Briefly introduce who we are and what we offer; request a 15-min discovery call.' },
+  { label: 'Book a discovery call',            text: 'Direct ask for a 15-min discovery call about our offering, anchored on the recent hook.' },
+  { label: 'Share a case study',               text: 'Share a relevant case study or proof point; offer to send more if it resonates.' },
+  { label: 'Follow up on previous outreach',   text: "Follow up on prior outreach; refresh the value prop and re-invite to chat." },
+  { label: 'Re-engage after silence',          text: "Reactivate after silence; lead with what's new on our side and a low-friction next step." },
+  { label: 'Ask for a referral',               text: "Ask for an introduction to a colleague who'd be the right buyer at their company." },
+  { label: 'Custom…',                     text: '' },
+];
+const intentSelect = $('intent_preset');
+const intentText = $('intent');
+INTENT_PRESETS.forEach((p, i) => {
+  const opt = document.createElement('option');
+  opt.value = String(i);
+  opt.textContent = p.label;
+  intentSelect.appendChild(opt);
+});
+const CUSTOM_INDEX = INTENT_PRESETS.length - 1;
+
+function applyPresetByIndex(idx) {
+  const preset = INTENT_PRESETS[idx];
+  if (!preset) return;
+  if (idx === CUSTOM_INDEX) {
+    intentText.readOnly = false;
+    intentText.focus();
+  } else {
+    intentText.value = preset.text;
+    intentText.readOnly = true;
+  }
+}
+
+function selectPresetMatching(text) {
+  // Pick the preset whose canonical text matches; otherwise mark "Custom…".
+  const trimmed = (text || '').trim();
+  const matchIdx = INTENT_PRESETS.findIndex((p, i) => i !== CUSTOM_INDEX && p.text === trimmed);
+  if (matchIdx >= 0) {
+    intentSelect.value = String(matchIdx);
+    intentText.value = INTENT_PRESETS[matchIdx].text;
+    intentText.readOnly = true;
+  } else {
+    intentSelect.value = String(CUSTOM_INDEX);
+    intentText.value = trimmed;
+    intentText.readOnly = false;
+  }
+}
+
+intentSelect.addEventListener('change', () => applyPresetByIndex(Number(intentSelect.value)));
+
+// ---------- shared app settings (server-side, /api/settings) ----------
+const SETTINGS_FIELDS = [
+  { id: 'recency_days', type: 'int' },
+  { id: 'max_news_items', type: 'int' },
+  { id: 'max_discovered_urls', type: 'int' },
+  { id: 'search_max_results', type: 'int' },
+  { id: 'linkedin_post_limit', type: 'int' },
+  { id: 'disable_web_search', type: 'bool', input: 'enable_web_search', invert: true },
+  { id: 'disable_linkedin',   type: 'bool', input: 'enable_linkedin',   invert: true },
+  { id: 'require_context_for_email', type: 'bool' },
+];
+const settingsStatus = $('settings-status');
+const recencySummary = $('recency-summary');
+
+// Per-tab override for the "skip empty email" toggle. The server-side default still wins on
+// fresh tabs and after "Save as defaults" / "Reset", but in between the user's last manual
+// click sticks even across page reloads — fixes the "I ticked it but the run shows it off" bug.
+const SKIP_EMPTY_LS_KEY = 'require_context_for_email_local';
+
+function applySettings(s) {
+  for (const f of SETTINGS_FIELDS) {
+    const el = $(f.input || f.id);
+    if (!el) continue;
+    const value = s[f.id];
+    if (value === undefined || value === null) continue;
+    if (f.type === 'bool') el.checked = f.invert ? !value : !!value;
+    else el.value = value;
+  }
+  if (s.recency_days != null) recencySummary.textContent = `(last ${s.recency_days} days)`;
+  if (s.default_intent != null) selectPresetMatching(s.default_intent);
+  if (typeof syncRecencyChips === 'function') syncRecencyChips();
+
+  // localStorage override for skip-empty: applied AFTER server values so a user's
+  // explicit per-tab choice survives reloads until they hit Save or Reset.
+  const local = localStorage.getItem(SKIP_EMPTY_LS_KEY);
+  if (local === 'true' || local === 'false') {
+    $('require_context_for_email').checked = (local === 'true');
+  }
+}
+
+// Track user toggles so the value persists across reloads.
+document.addEventListener('DOMContentLoaded', () => {
+  const el = $('require_context_for_email');
+  if (el) {
+    el.addEventListener('change', () => {
+      localStorage.setItem(SKIP_EMPTY_LS_KEY, String(el.checked));
+    });
+  }
+});
+
+async function loadSettings() {
+  try {
+    const resp = await fetch('/api/settings');
+    if (!resp.ok) throw new Error(await resp.text());
+    applySettings(await resp.json());
+  } catch (e) {
+    console.warn('loadSettings failed', e);
+  }
+}
+
+async function saveSettings() {
+  const payload = {};
+  for (const f of SETTINGS_FIELDS) {
+    const el = $(f.input || f.id);
+    if (!el) continue;
+    if (f.type === 'bool')      payload[f.id] = f.invert ? !el.checked : el.checked;
+    else if (f.type === 'int')  payload[f.id] = Number(el.value);
+    else                        payload[f.id] = parseFloat(el.value);
+  }
+  payload.default_intent = intentText.value.trim();
+  const resp = await fetch('/api/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) { flashStatus('Save failed: ' + (await resp.text()), true); return; }
+  // Once saved server-side, the localStorage override is no longer meaningful — drop it
+  // so the next reload picks up the new server default cleanly.
+  localStorage.removeItem(SKIP_EMPTY_LS_KEY);
+  applySettings(await resp.json());
+  flashStatus('Saved for everyone');
+}
+
+async function resetSettings() {
+  if (!confirm('Reset settings to .env defaults for ALL teammates?')) return;
+  const resp = await fetch('/api/settings/reset', { method: 'POST' });
+  if (!resp.ok) { flashStatus('Reset failed', true); return; }
+  localStorage.removeItem(SKIP_EMPTY_LS_KEY);
+  applySettings(await resp.json());
+  flashStatus('Reset to .env defaults');
+}
+
+function flashStatus(msg, isError = false) {
+  settingsStatus.style.color = isError ? 'var(--error)' : 'var(--muted)';
+  settingsStatus.textContent = msg;
+  setTimeout(() => settingsStatus.textContent = '', 2200);
+}
+
+$('save-settings-btn').addEventListener('click', saveSettings);
+$('reset-settings-btn').addEventListener('click', resetSettings);
+
+// ---------- recency preset chips ----------
+const recencyChips = document.querySelectorAll('#recency_presets .preset-chip');
+function syncRecencyChips() {
+  const current = Number($('recency_days').value) || null;
+  recencyChips.forEach(chip => {
+    chip.classList.toggle('active', Number(chip.dataset.days) === current);
+  });
+}
+recencyChips.forEach(chip => {
+  chip.addEventListener('click', () => {
+    $('recency_days').value = chip.dataset.days;
+    syncRecencyChips();
+  });
+});
+$('recency_days').addEventListener('input', syncRecencyChips);
+
+loadSettings();
+
+// ---------- sender profiles ----------
+async function loadProfiles() {
+  const sel = $('sender_profile_id');
+  const last = localStorage.getItem('last_sender_profile_id') || '';
+  try {
+    const profiles = await (await fetch('/api/sender-profiles')).json();
+    sel.innerHTML = '<option value="">(none — generic email)</option>' +
+      profiles.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+    if (last && profiles.find(p => p.id === last)) sel.value = last;
+    return profiles;
+  } catch (e) {
+    console.warn('loadProfiles failed', e);
+    return [];
+  }
+}
+$('sender_profile_id').addEventListener('change', () => {
+  localStorage.setItem('last_sender_profile_id', $('sender_profile_id').value);
+});
+
+const modal = $('profiles-modal');
+$('manage-profiles-btn').addEventListener('click', async () => {
+  modal.classList.remove('hidden');
+  await renderProfilesList();
+  resetProfileForm();
+});
+$('close-modal').addEventListener('click', () => modal.classList.add('hidden'));
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
+
+async function renderProfilesList() {
+  const profiles = await (await fetch('/api/sender-profiles')).json();
+  const list = $('profiles-list');
+  if (!profiles.length) {
+    list.innerHTML = '<p class="warn">No profiles yet. Add your first one below.</p>';
+    return;
+  }
+  list.innerHTML = profiles.map(p => `
+    <div class="profile-row">
+      <div>
+        <strong>${escapeHtml(p.name)}</strong>
+        <div class="meta">${escapeHtml(p.description || '')}</div>
+      </div>
+      <div class="actions">
+        <button type="button" class="ghost-btn" data-edit="${escapeHtml(p.id)}">Edit</button>
+        <button type="button" class="ghost-btn" data-delete="${escapeHtml(p.id)}">Delete</button>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('[data-edit]').forEach(btn =>
+    btn.addEventListener('click', () => beginEdit(btn.dataset.edit, profiles)));
+  list.querySelectorAll('[data-delete]').forEach(btn =>
+    btn.addEventListener('click', () => confirmDelete(btn.dataset.delete)));
+}
+
+function resetProfileForm() {
+  $('edit-id').value = '';
+  $('p-name').value = '';
+  $('p-description').value = '';
+  $('p-kb').value = '';
+  $('form-title').textContent = 'Add a profile';
+}
+
+function beginEdit(id, profiles) {
+  const p = profiles.find(x => x.id === id);
+  if (!p) return;
+  $('edit-id').value = p.id;
+  $('p-name').value = p.name;
+  $('p-description').value = p.description || '';
+  $('p-kb').value = p.kb_text || '';
+  $('form-title').textContent = `Edit "${p.name}"`;
+}
+
+$('cancel-edit-btn').addEventListener('click', resetProfileForm);
+
+$('save-profile-btn').addEventListener('click', async () => {
+  const id = $('edit-id').value;
+  const body = {
+    name: $('p-name').value.trim(),
+    description: $('p-description').value.trim(),
+    kb_text: $('p-kb').value,
+  };
+  if (!body.name) { alert('Name is required.'); return; }
+  const url = id ? `/api/sender-profiles/${id}` : '/api/sender-profiles';
+  const method = id ? 'PUT' : 'POST';
+  const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!resp.ok) {
+    alert('Save failed: ' + (await resp.text()));
+    return;
+  }
+  await renderProfilesList();
+  await loadProfiles();
+  resetProfileForm();
+});
+
+async function confirmDelete(id) {
+  if (!confirm('Delete this profile?')) return;
+  const resp = await fetch(`/api/sender-profiles/${id}`, { method: 'DELETE' });
+  if (!resp.ok) { alert('Delete failed'); return; }
+  await renderProfilesList();
+  await loadProfiles();
+}
+
+loadProfiles();
+
+const form = $('research-form');
+const submitBtn = $('submit-btn');
+const loading = $('loading');
+const results = $('results');
+
+// Remembered so the result UI can show exactly what flags were sent.
+let lastSubmittedPayload = null;
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  loading.classList.remove('hidden');
+  results.classList.add('hidden');
+
+  const payload = {
+    company_url: $('company_url').value,
+    company_name: $('company_name').value.trim() || null,
+    linkedin_url: $('linkedin_url').value || null,
+    recipient_name: $('recipient_name').value || null,
+    recipient_role: $('recipient_role').value || null,
+    sender_profile_id: $('sender_profile_id').value || null,
+    intent: intentText.value.trim() || null,
+    recency_days: Number($('recency_days').value) || null,
+    max_news_items: Number($('max_news_items').value) || null,
+    max_discovered_urls: Number($('max_discovered_urls').value) || null,
+    search_max_results: Number($('search_max_results').value),
+    disable_web_search: !$('enable_web_search').checked,
+    disable_linkedin: !$('enable_linkedin').checked,
+    require_context_for_email: $('require_context_for_email').checked,
+    linkedin_post_limit: Number($('linkedin_post_limit').value) || null,
+  };
+  lastSubmittedPayload = payload;
+
+  try {
+    const resp = await fetch('/api/research', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+      throw new Error(err.detail || 'Request failed');
+    }
+    const data = await resp.json();
+    render(data);
+  } catch (err) {
+    results.classList.remove('hidden');
+    $('warnings').innerHTML = `<div class="warn error">Error: ${escapeHtml(err.message)}</div>`;
+    $('insights').innerHTML = '';
+    $('posts').innerHTML = '';
+    $('email-out').value = '';
+    $('cost-out').textContent = '$0.00';
+  } finally {
+    submitBtn.disabled = false;
+    loading.classList.add('hidden');
+  }
+});
+
+const STATUS_LABEL = {
+  ok: 'found',
+  empty: 'none',
+  skipped: 'skipped',
+  error: 'failed',
+};
+
+function render(data) {
+  results.classList.remove('hidden');
+  const { bundle, email } = data;
+
+  // Per-source status row
+  const newsStatus = bundle.news_status || 'empty';
+  const liStatus = bundle.linkedin_status || 'skipped';
+  // Build the applied-flags pills from the payload we actually sent — so the
+  // user can see at a glance whether the toggles they expected fired.
+  const flags = lastSubmittedPayload || {};
+  const flagPills = [];
+  if (flags.disable_web_search === false) flagPills.push("Web search: ON");
+  else if (flags.disable_web_search === true) flagPills.push("Web search: off");
+  if (flags.disable_linkedin === false) flagPills.push("LinkedIn: ON");
+  else if (flags.disable_linkedin === true) flagPills.push("LinkedIn: off");
+  if (flags.require_context_for_email === true) flagPills.push("Skip empty email: ON");
+  else if (flags.require_context_for_email === false) flagPills.push("Skip empty email: off");
+
+  $('status-row').innerHTML = `
+    <span class="status-pill">
+      <span class="dot ${escapeHtml(newsStatus)}"></span>
+      <strong>News:</strong> ${escapeHtml(STATUS_LABEL[newsStatus] || newsStatus)}
+      <span class="status-detail">${escapeHtml(bundle.news_status_detail || '')}</span>
+    </span>
+    <span class="status-pill">
+      <span class="dot ${escapeHtml(liStatus)}"></span>
+      <strong>LinkedIn:</strong> ${escapeHtml(STATUS_LABEL[liStatus] || liStatus)}
+      <span class="status-detail">${escapeHtml(bundle.linkedin_status_detail || '')}</span>
+    </span>
+    ${flagPills.length
+      ? `<span class="status-pill" style="font-size: 0.8rem; color: var(--muted);">
+           ${flagPills.map(f => escapeHtml(f)).join(' &nbsp;·&nbsp; ')}
+         </span>`
+      : ''}
+  `;
+
+  $('warnings').innerHTML = (bundle.warnings || [])
+    .map(w => `<div class="warn">⚠️ ${escapeHtml(w)}</div>`)
+    .join('');
+
+  const items = bundle.items || [];
+  const posts = bundle.linkedin_posts || [];
+  $('insights-heading').textContent = `Recent news (${items.length})`;
+  $('insights').innerHTML = items.length
+    ? items.map(it => `
+        <details class="insight">
+          <summary>
+            <span class="badge">${escapeHtml(it.category)}</span>
+            ${escapeHtml(it.title)}
+            <span class="date">— ${escapeHtml(it.published_date)}</span>
+          </summary>
+          <p>${escapeHtml(it.summary)}</p>
+          <p><a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">Source</a></p>
+        </details>`).join('')
+    : `<p class="warn">${escapeHtml(bundle.news_status_detail || 'No recent news found.')}</p>`;
+
+  $('posts-heading').textContent = `LinkedIn posts (${posts.length})`;
+  $('posts').innerHTML = posts.length
+    ? posts.map(p => `
+        <details class="insight">
+          <summary><span class="date">${escapeHtml(p.posted_date)}</span> — ${escapeHtml(p.text.slice(0, 80))}…</summary>
+          <p>${escapeHtml(p.text)}</p>
+          ${p.url ? `<p><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Permalink</a></p>` : ''}
+          ${p.engagement ? `<p class="date">${escapeHtml(p.engagement)}</p>` : ''}
+        </details>`).join('')
+    : `<p class="warn">${escapeHtml(bundle.linkedin_status_detail || 'No LinkedIn posts found.')}</p>`;
+
+  $('email-out').value = email || '';
+  $('cost-out').textContent = '$' + Number(bundle.estimated_cost_usd || 0).toFixed(4);
+}
+
+$('copy-btn').addEventListener('click', () => {
+  const ta = $('email-out');
+  ta.select();
+  document.execCommand('copy');
+  ta.blur();
+  const btn = $('copy-btn');
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = orig, 1500);
+});
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+</script>
+</body>
+</html>
