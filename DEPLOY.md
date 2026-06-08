@@ -3,7 +3,7 @@
 A single container, wired by `docker-compose.yml`, fronted by the shared edge nginx:
 
 ```
-Browser ──https──► edge nginx :7777 ──/coldemail/──► 127.0.0.1:4767 ──► app (uvicorn :8000)
+Browser ──https──► edge nginx :7777 ──/coldemail/──► 127.0.0.1:4766 ──► app (uvicorn :8000)
         (TLS terminated here)        (prefix stripped)        (host)        (container)
 ```
 
@@ -13,10 +13,10 @@ before forwarding, and the app is told its mount point via `ROOT_PATH=/coldemail
 (set in `docker-compose.yml`) so the UI's `fetch()` calls target `/coldemail/api/*`.
 
 - **Public entrypoint:** `https://ai.arttechgroup.com:7777/coldemail/`
-- **Host port:** `4767` (container `8000`) — the edge's upstream target.
+- **Host port:** `4766` (container `8000`) — the edge's upstream target.
 
 > Running standalone (no edge)? Clear `ROOT_PATH` in `docker-compose.yml` (set it to
-> empty) and the app serves at `/` directly on `http://localhost:4767/`.
+> empty) and the app serves at `/` directly on `http://localhost:4766/`.
 
 ## Prerequisites
 - Docker + Docker Compose (`docker compose` v2, or legacy `docker-compose`).
@@ -55,7 +55,7 @@ Add these to the edge `server { listen 7777 ssl ... }` block on `ai.arttechgroup
 (mirrors the `/storia/` pattern — the prefix is stripped before forwarding):
 
 ```nginx
-upstream coldemail_app { server 127.0.0.1:4767; }
+upstream coldemail_app { server 127.0.0.1:4766; }
 
 # inside server { listen 7777 ssl http2; ... }
 location = /coldemail { return 301 /coldemail/; }
@@ -78,7 +78,7 @@ Reload after editing: `sudo nginx -t && sudo systemctl reload nginx`.
 ## Smoke test
 ```bash
 # Direct to the container (prefix already stripped, so hit the root paths):
-curl http://localhost:4767/api/health    # -> {"ok":true,"openai_key_configured":true}
+curl http://localhost:4766/api/health    # -> {"ok":true,"openai_key_configured":true}
 
 # Through the edge (the real public path):
 curl https://ai.arttechgroup.com:7777/coldemail/api/health   # -> 200
@@ -105,8 +105,8 @@ To back up, copy these directories. To start fresh, stop the stack and delete th
 - SQLite is in WAL mode, so concurrent reads/writes across workers are safe.
 
 ## TLS / HTTPS
-The container serves **plain HTTP** (host `4767`). TLS is terminated at the edge
-nginx (`listen 7777 ssl`), which forwards plain HTTP to `127.0.0.1:4767`.
+The container serves **plain HTTP** (host `4766`). TLS is terminated at the edge
+nginx (`listen 7777 ssl`), which forwards plain HTTP to `127.0.0.1:4766`.
 
 ## Gotchas
 - **Headless only.** Playwright runs headless in the container. The optional
@@ -118,7 +118,7 @@ nginx (`listen 7777 ssl`), which forwards plain HTTP to `127.0.0.1:4767`.
   missing.
 - **Prefix must match the edge.** `ROOT_PATH` (compose) and the nginx `location`
   prefix must be the same string. The UI bakes `ROOT_PATH` into its `fetch()` base,
-  so hitting the container *directly* at `http://localhost:4767/` loads the page but
+  so hitting the container *directly* at `http://localhost:4766/` loads the page but
   its API calls 404 (they target `/coldemail/api/*`, which only the edge resolves).
   That's expected — test the full UI through the edge URL, or clear `ROOT_PATH` to
   run standalone.

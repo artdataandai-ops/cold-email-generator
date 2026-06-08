@@ -5,8 +5,8 @@ services:
     container_name: cold-email-research
     restart: unless-stopped
     ports:
-      # Host 4767 (47xx app range) — the edge nginx proxies /coldemail/ here.
-      - "4767:8000"
+      # Host 4766 (47xx app range) — the edge nginx proxies /coldemail/ here.
+      - "4766:8000"
     environment:
       # Served behind the edge proxy under /coldemail/ (prefix stripped upstream).
       # Overrides any ROOT_PATH in .env; clear it to run standalone at "/".

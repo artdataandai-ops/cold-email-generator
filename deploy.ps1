@@ -2,8 +2,8 @@
 .SYNOPSIS
     Cold-Email Research Assistant - production deploy script (Windows).
 
-    app (uvicorn, 2 workers) :8000 inside the container, published on host :4767.
-    Served behind the edge nginx under /coldemail/  ->  127.0.0.1:4767.
+    app (uvicorn, 2 workers) :8000 inside the container, published on host :4766.
+    Served behind the edge nginx under /coldemail/  ->  127.0.0.1:4766.
     Public entrypoint: https://ai.arttechgroup.com:7777/coldemail/
 
 .EXAMPLE
@@ -61,7 +61,7 @@ Write-Host "> Waiting for the app to come up..."
 $ok = $false
 foreach ($i in 1..30) {
     try {
-        $resp = Invoke-WebRequest -Uri 'http://localhost:4767/api/health' -UseBasicParsing -TimeoutSec 3
+        $resp = Invoke-WebRequest -Uri 'http://localhost:4766/api/health' -UseBasicParsing -TimeoutSec 3
         if ($resp.StatusCode -eq 200) { $ok = $true; break }
     } catch {}
     Start-Sleep -Seconds 2
@@ -71,9 +71,9 @@ Write-Host ""
 Invoke-Compose @('ps')
 Write-Host ""
 if ($ok) {
-    Write-Host "OK Deploy complete - health 200 on localhost:4767." -ForegroundColor Green
+    Write-Host "OK Deploy complete - health 200 on localhost:4766." -ForegroundColor Green
     Write-Host "   Public URL (via edge nginx): https://ai.arttechgroup.com:7777/coldemail/"
-    Write-Host "   (Container is mounted under /coldemail; the UI works through the edge, not direct on :4767.)"
+    Write-Host "   (Container is mounted under /coldemail; the UI works through the edge, not direct on :4766.)"
 } else {
     Write-Host "!! Stack started but health check did not return 200 in time." -ForegroundColor Yellow
     Write-Host "   Check logs:  $Compose logs -f"
