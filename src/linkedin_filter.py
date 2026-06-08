@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 
 from .config import LLM_MODEL, OPENAI_API_KEY
 from .cost_guard import CostMeter, estimate_call_usd
-from .linkedin import is_pure_repost
+# is_pure_repost is no longer used here — pure reposts get scored by the LLM
+# like any other post. The helper itself stays available for callers that want it.
 from .schemas import EventSignificance, LinkedInPost, NewsItem, NewsSentiment
 
 logger = logging.getLogger(__name__)
@@ -73,9 +74,15 @@ _SYSTEM = (
 def _serialize_posts_for_scoring(posts: list[LinkedInPost]) -> str:
     out = []
     for i, p in enumerate(posts):
+        if p.is_repost and (p.user_commentary or "").strip():
+            post_type = "commentary_on_repost"
+        elif p.is_repost:
+            post_type = "pure_repost"
+        else:
+            post_type = "original"
         out.append({
             "index": i,
-            "post_type": "commentary_on_repost" if p.is_repost else "original",
+            "post_type": post_type,
             "text": (p.text or "")[:600],
             "posted_date": p.posted_date.isoformat(),
             "engagement": p.engagement,
@@ -101,17 +108,14 @@ def filter_linkedin_posts(
     meter: CostMeter,
     max_kept: int = MAX_KEPT_POSTS,
 ) -> list[LinkedInPost]:
-    """Drop pure reposts, then LLM-rank the rest. Return at most `max_kept`, sorted by relevance desc."""
+    """LLM-rank the posts (including pure reposts). Return at most `max_kept`, sorted by relevance desc."""
     if not posts:
         return []
 
-    pre_drop = len(posts)
-    candidates = [p for p in posts if not is_pure_repost(p)]
-    after_drop = len(candidates)
-    logger.info("LinkedIn filter: dropped %d pure reposts (%d → %d)", pre_drop - after_drop, pre_drop, after_drop)
-
-    if not candidates:
-        return []
+    # Pure reposts used to be filtered here; we now keep them and let the LLM
+    # decide their relevance. The email writer phrases them as "noticed you
+    # shared X" rather than as the recipient's original thought.
+    candidates = posts
 
     user_prompt = (
         f"Recipient role: {recipient_role or 'unknown decision maker'}\n\n"

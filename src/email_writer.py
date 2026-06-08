@@ -94,7 +94,7 @@ _SYSTEM = (
     "May be empty.\n"
     "- ## SENDER CONTEXT = the seller's offering, ICP, and tone. This is what we "
     "pitch FROM; never invent capabilities not claimed here.\n"
-    "- Each LinkedIn post is tagged ``post_type``: 'original' or 'commentary_on_repost'.\n\n"
+    "- Each LinkedIn post is tagged ``post_type``: 'original', 'commentary_on_repost', or 'pure_repost' (the recipient shared this without adding any text of their own).\n\n"
     "MANDATORY REASONING (fill these structured-output fields BEFORE writing the email):\n"
     "1. anchor_chosen — which news item / LinkedIn post you're anchored on, in 5-10 "
     "words. Use 'no research signal' if nothing in RESEARCH is usable.\n"
@@ -115,9 +115,10 @@ _SYSTEM = (
     "- Opens by referencing the anchor (the news or post), states the implication "
     "concretely, names the sender's specific fit, ends with the OBJECTIVE's CTA "
     "phrased naturally.\n"
-    "- For LinkedIn: 'your post about X' (original) / 'your take on X' "
-    "(commentary_on_repost). NEVER use 'repost' / 'reshare' / 'shared'. Never "
-    "name the original author.\n"
+    "- For LinkedIn: phrase by post_type.  'original' → 'your post about X' (their own thought).  "
+    "'commentary_on_repost' → 'your take on X' (their commentary, not the original).  "
+    "'pure_repost' → 'noticed you shared the piece on X' or 'saw your repost on X' (acknowledge it's a share — never attribute the idea to them as if it were original). "
+    "Never name the original author by name.\n"
     "- No buzzwords. No 'cutting-edge' / 'world-class' / 'revolutionary' / "
     "'best-in-class' / 'game-changing'.\n\n"
     "REFUSALS\n"
@@ -148,8 +149,12 @@ def _serialize(items: list[NewsItem], posts: list[LinkedInPost]) -> str:
         ],
         "linkedin_posts": [
             {
-                "post_type": "commentary_on_repost" if p.is_repost else "original",
-                "text": (p.user_commentary or p.text) if p.is_repost else p.text,
+                "post_type": (
+                    "commentary_on_repost" if p.is_repost and (p.user_commentary or "").strip()
+                    else "pure_repost" if p.is_repost
+                    else "original"
+                ),
+                "text": (p.user_commentary or p.text) if p.is_repost and (p.user_commentary or "").strip() else p.text,
                 "date": p.posted_date.isoformat(),
                 "topics": p.topics,
                 "relevance_score": p.relevance_score,

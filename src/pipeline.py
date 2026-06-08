@@ -244,7 +244,7 @@ def research_pipeline(
             bundle.linkedin_status_detail = f"No posts within the last {eff_recency} days."
         elif not ranked_posts:
             bundle.linkedin_status = "empty"
-            bundle.linkedin_status_detail = "All recent posts were pure reposts (filtered out)."
+            bundle.linkedin_status_detail = "Recent posts found, but none scored relevant enough to anchor on."
         else:
             bundle.linkedin_status = "ok"
             bundle.linkedin_status_detail = f"{len(ranked_posts)} relevant post(s)."

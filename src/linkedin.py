@@ -93,10 +93,18 @@ def _coerce_apify_post(raw: dict[str, Any]) -> LinkedInPost | None:
     )
 
     if is_repost:
-        original_text = (
-            reposted.get("text") or reposted.get("postText") or reposted.get("content") or ""
-        ) if isinstance(reposted, dict) else ""
-        original_author = _extract_author_name(reposted.get("author") if isinstance(reposted, dict) else None)
+        if reposted:
+            # Older actors nest the original post under repostedPost / reshared / etc.
+            original_text = (
+                reposted.get("text") or reposted.get("postText") or reposted.get("content") or ""
+            ) if isinstance(reposted, dict) else ""
+            original_author = _extract_author_name(reposted.get("author") if isinstance(reposted, dict) else None)
+        else:
+            # Flat-shape actors (e.g. LQQIXN9Othf8f7R5n) collapse the original into
+            # the top-level fields: `text` is the original post's body, `author` is
+            # the original poster. No separate `repostedPost` object is emitted.
+            original_text = raw.get("text") or raw.get("postText") or raw.get("content") or ""
+            original_author = _extract_author_name(raw.get("author"))
         text = (user_commentary or "").strip() or original_text
     else:
         text = raw.get("text") or raw.get("postText") or raw.get("content") or ""

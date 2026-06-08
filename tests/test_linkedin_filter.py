@@ -40,7 +40,30 @@ def test_coerce_pure_repost_keeps_original_text_but_flags_repost():
     assert p.is_repost is True
     assert p.user_commentary is None
     assert p.original_author == "Jane Original"
+    assert p.text == "Original author's deep insight."
     # filter rule: pure repost
+    assert is_pure_repost(p) is True
+
+
+def test_coerce_pure_repost_flat_shape_uses_top_level_text():
+    """Actor LQQIXN9Othf8f7R5n flattens reposts: post_type='repost' but no nested
+    `repostedPost` object — the original's text + author sit at the top level."""
+    raw = {
+        "post_type": "repost",
+        "posted_at": {"date": "2026-05-30 12:00:00", "timestamp": 1748606400000},
+        "text": "Original article body that the user shared without comment.",
+        "author": {"first_name": "G.", "last_name": "Vijaya Raghavan"},
+        "url": "https://www.linkedin.com/posts/g-vijaya-raghavan_activity-123",
+        "stats": {"total_reactions": 97, "comments": 12},
+    }
+    p = _coerce_apify_post(raw)
+    assert p is not None
+    assert p.is_repost is True
+    assert p.user_commentary is None
+    assert p.text.startswith("Original article body")
+    assert p.original_author == "G. Vijaya Raghavan"
+    # Still a pure repost — the user added no commentary — but it now reaches
+    # the downstream LLM scorer instead of being dropped at coerce.
     assert is_pure_repost(p) is True
 
 
