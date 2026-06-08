@@ -411,6 +411,9 @@
 </div>
 
 <script>
+// Sub-path prefix when served behind a reverse proxy (e.g. "/coldemail").
+// Empty when served at the domain root. All API calls below go through this.
+const API_BASE = "{{ root_path }}";
 const $ = (id) => document.getElementById(id);
 
 // ---------- intent presets ----------
@@ -514,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadSettings() {
   try {
-    const resp = await fetch('/api/settings');
+    const resp = await fetch(`${API_BASE}/api/settings`);
     if (!resp.ok) throw new Error(await resp.text());
     applySettings(await resp.json());
   } catch (e) {
@@ -532,7 +535,7 @@ async function saveSettings() {
     else                        payload[f.id] = parseFloat(el.value);
   }
   payload.default_intent = intentText.value.trim();
-  const resp = await fetch('/api/settings', {
+  const resp = await fetch(`${API_BASE}/api/settings`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -547,7 +550,7 @@ async function saveSettings() {
 
 async function resetSettings() {
   if (!confirm('Reset settings to .env defaults for ALL teammates?')) return;
-  const resp = await fetch('/api/settings/reset', { method: 'POST' });
+  const resp = await fetch(`${API_BASE}/api/settings/reset`, { method: 'POST' });
   if (!resp.ok) { flashStatus('Reset failed', true); return; }
   localStorage.removeItem(SKIP_EMPTY_LS_KEY);
   applySettings(await resp.json());
@@ -586,7 +589,7 @@ async function loadProfiles() {
   const sel = $('sender_profile_id');
   const last = localStorage.getItem('last_sender_profile_id') || '';
   try {
-    const profiles = await (await fetch('/api/sender-profiles')).json();
+    const profiles = await (await fetch(`${API_BASE}/api/sender-profiles`)).json();
     sel.innerHTML = '<option value="">(none — generic email)</option>' +
       profiles.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
     if (last && profiles.find(p => p.id === last)) sel.value = last;
@@ -610,7 +613,7 @@ $('close-modal').addEventListener('click', () => modal.classList.add('hidden'));
 modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 
 async function renderProfilesList() {
-  const profiles = await (await fetch('/api/sender-profiles')).json();
+  const profiles = await (await fetch(`${API_BASE}/api/sender-profiles`)).json();
   const list = $('profiles-list');
   if (!profiles.length) {
     list.innerHTML = '<p class="warn">No profiles yet. Add your first one below.</p>';
@@ -661,7 +664,7 @@ $('save-profile-btn').addEventListener('click', async () => {
     kb_text: $('p-kb').value,
   };
   if (!body.name) { alert('Name is required.'); return; }
-  const url = id ? `/api/sender-profiles/${id}` : '/api/sender-profiles';
+  const url = id ? `${API_BASE}/api/sender-profiles/${id}` : `${API_BASE}/api/sender-profiles`;
   const method = id ? 'PUT' : 'POST';
   const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!resp.ok) {
@@ -675,7 +678,7 @@ $('save-profile-btn').addEventListener('click', async () => {
 
 async function confirmDelete(id) {
   if (!confirm('Delete this profile?')) return;
-  const resp = await fetch(`/api/sender-profiles/${id}`, { method: 'DELETE' });
+  const resp = await fetch(`${API_BASE}/api/sender-profiles/${id}`, { method: 'DELETE' });
   if (!resp.ok) { alert('Delete failed'); return; }
   await renderProfilesList();
   await loadProfiles();
@@ -717,7 +720,7 @@ form.addEventListener('submit', async (e) => {
   lastSubmittedPayload = payload;
 
   try {
-    const resp = await fetch('/api/research', {
+    const resp = await fetch(`${API_BASE}/api/research`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
